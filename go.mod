@@ -1,4 +1,4 @@
-module go-plugins
+module goplugins
 
 go 1.14
 
