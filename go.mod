@@ -1,4 +1,4 @@
-module goplugins
+module github.com/gmsec/goplugins
 
 go 1.14
 
