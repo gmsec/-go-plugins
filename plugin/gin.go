@@ -45,16 +45,16 @@ func Run(opts ...Option) (*server, error) {
 		s.opt.service.Server().SetAddress(s.opt.addr)
 	}
 
+	s.wg.Add(1)
 	go func() {
-		s.wg.Add(1)
 		s.opt.service.Run()
 		s.wg.Done()
 	}()
 
 	if s.opt.router != nil {
+		s.wg.Add(1)
 		listener := s.opt.service.Server().GetListener()
 		go func() {
-			s.wg.Add(1)
 			err := s.opt.router.RunListener(listener)
 			if err != nil {
 				fmt.Println(err)
@@ -85,12 +85,10 @@ func (s *server) Stop() {
 		return
 	}
 	if s.opt.service != nil {
-		s.opt.service.NotifyStop()
+		go func() {
+			s.opt.service.NotifyStop()
+		}()
 	}
-	// if s.opt.router != nil {
-	// 	listener := s.opt.service.Server().GetListener()
-	// 	listener.Close()
-	// }
 	s.Wait()
 }
 
