@@ -1,7 +1,9 @@
-package ginplugins
+package plugin
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gmsec/micro"
@@ -29,14 +31,14 @@ func WithAddr(addr string) Option {
 }
 
 // Run run
-func Run(opts ...Option) (bool, *server) {
+func Run(opts ...Option) (*server, error) {
 	var s server
 	for _, f := range opts {
 		f(&s.opt)
 	}
 
 	if s.opt.service == nil {
-		return false, nil
+		return nil, fmt.Errorf("service is nil")
 	}
 
 	if len(s.opt.addr) > 0 {
@@ -53,13 +55,16 @@ func Run(opts ...Option) (bool, *server) {
 		listener := s.opt.service.Server().GetListener()
 		go func() {
 			s.wg.Add(1)
-			s.opt.router.RunListener(listener)
+			err := s.opt.router.RunListener(listener)
+			if err != nil {
+				fmt.Println(err)
+			}
 			s.wg.Done()
 		}()
 	}
 
 	s.isStart = true
-	return true, &s
+	return &s, nil
 }
 
 type server struct {
@@ -68,6 +73,13 @@ type server struct {
 	isStart bool
 }
 
+// Wait 等待结束
+func (s *server) Wait() {
+	time.Sleep(1 * time.Second)
+	s.wg.Wait()
+}
+
+// Stop 主动stop
 func (s *server) Stop() {
 	if !s.isStart {
 		return
@@ -75,11 +87,11 @@ func (s *server) Stop() {
 	if s.opt.service != nil {
 		s.opt.service.NotifyStop()
 	}
-	if s.opt.router != nil {
-		listener := s.opt.service.Server().GetListener()
-		listener.Close()
-	}
-	s.wg.Wait()
+	// if s.opt.router != nil {
+	// 	listener := s.opt.service.Server().GetListener()
+	// 	listener.Close()
+	// }
+	s.Wait()
 }
 
 type options struct {
