@@ -2,8 +2,12 @@ package plugin
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/xxjwxc/public/dev"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gmsec/micro"
@@ -55,16 +59,27 @@ func Run(opts ...Option) (*server, error) {
 		s.wg.Add(1)
 		listener := s.opt.service.Server().GetListener()
 		go func() {
-			err := s.opt.router.RunListener(listener)
-			if err != nil {
-				fmt.Println(err)
-			}
+			http.Handle("/", s.opt.router)
+			http.Serve(listener, nil)
+			// or
+			// err := s.opt.router.RunListener(listener)
+			// if err != nil {
+			// 	debugPrintError(err)
+			// }
 			s.wg.Done()
 		}()
 	}
 
 	s.isStart = true
 	return &s, nil
+}
+
+func debugPrintError(err error) {
+	if err != nil {
+		if dev.IsDev() {
+			fmt.Fprintf(os.Stderr, "[GIN-debug] [ERROR] %v\n", err)
+		}
+	}
 }
 
 type server struct {
