@@ -50,7 +50,7 @@ func Run(opts ...Option) (*server, error) {
 	}
 
 	s.wg.Add(1)
-	go func() {
+	go func() { // grpc
 		s.opt.service.Run()
 		s.wg.Done()
 	}()
@@ -58,7 +58,7 @@ func Run(opts ...Option) (*server, error) {
 	if s.opt.router != nil {
 		s.wg.Add(1)
 		listener := s.opt.service.Server().GetListener()
-		go func() {
+		go func() { // http
 			http.Handle("/", s.opt.router)
 			http.Serve(listener, nil)
 			// or
