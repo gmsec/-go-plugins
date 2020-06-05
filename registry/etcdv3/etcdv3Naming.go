@@ -95,7 +95,7 @@ func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) er
 	defer r.Unlock()
 
 	r.opts.Addrs = []string{address}
-	host, pt, err := net.SplitHostPort(address)
+	_, pt, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) er
 	//r.Resolve(fmt.Sprintf("127.0.0.1:%s", *port))
 	err = gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
 		Op:       naming.Add,
-		Addr:     host,
+		Addr:     address,
 		Metadata: port,
 	})
 
@@ -120,5 +120,8 @@ func (r *Etcdv3NamingRegister) Resolve(target string) (naming.Watcher, error) {
 
 	t := &etcdNaming.GRPCResolver{Client: r.node}
 
-	return t, nil
+	return t.Resolve(target)
 }
+
+// Close close watcher
+func (r *Etcdv3NamingRegister) Close() { r.node.Close() }
