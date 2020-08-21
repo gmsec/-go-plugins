@@ -25,15 +25,15 @@ func (c *Context) WriteJSON(obj interface{}) {
 // GetGinCtx 获取 gin.Context
 func (c *Context) GetGinCtx() *gin.Context {
 	req := c.GetValue(ginHTTPReq{})
-	if req == nil {
-		mylog.ErrorString("using default gin.context")
-		r, _ := gin.CreateTestContext(httptest.NewRecorder())
-		return r
+	if req != nil {
+		if r, ok := req.(*gin.Context); ok {
+			return r
+		}
 	}
-	if r, ok := req.(*gin.Context); ok {
-		return r
-	}
-	return nil
+
+	mylog.ErrorString("using default gin.context")
+	r, _ := gin.CreateTestContext(httptest.NewRecorder())
+	return r
 }
 
 // NewCtx Create a new custom context

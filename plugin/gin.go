@@ -74,6 +74,36 @@ func Run(opts ...Option) (*server, error) {
 	return &s, nil
 }
 
+// RunHTTP 只启动http
+func RunHTTP(opts ...Option) (*server, error) {
+	var s server
+	for _, f := range opts {
+		f(&s.opt)
+	}
+
+	if len(s.opt.addr) == 0 {
+		return nil, fmt.Errorf("addr is nil")
+	}
+
+	if s.opt.router != nil {
+		s.wg.Add(1)
+		go func() { // http
+			s.opt.router.Run(s.opt.addr)
+			// http.Handle("/", s.opt.router)
+			// http.Serve(listener, nil)
+			// or
+			// err := s.opt.router.RunListener(listener)
+			// if err != nil {
+			// 	debugPrintError(err)
+			// }
+			s.wg.Done()
+		}()
+	}
+
+	s.isStart = true
+	return &s, nil
+}
+
 func debugPrintError(err error) {
 	if err != nil {
 		if dev.IsDev() {
