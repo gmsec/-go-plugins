@@ -2,15 +2,17 @@ package plugin
 
 import (
 	"fmt"
-	"net/http"
+	"net"
 	"os"
+	"strings"
 	"sync"
-	"time"
 
 	"github.com/xxjwxc/public/dev"
+	"github.com/xxjwxc/public/mylog"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gmsec/micro"
+	"github.com/soheilhy/cmux"
 )
 
 // WithGin gin model init. gen 初始化模式
@@ -49,6 +51,18 @@ func Run(opts ...Option) (*server, error) {
 		s.opt.service.Server().SetAddress(s.opt.addr)
 	}
 
+	// 起服务
+	lis, err := net.Listen("tcp", s.opt.service.Server().GetAddress())
+	if err != nil {
+		mylog.Fatal("failed to listen: ", err)
+		return nil, err
+	}
+	s.mux = cmux.New(lis)
+
+	grpcl := s.mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+
+	s.opt.service.Server().SetListener(grpcl)
+
 	s.wg.Add(1)
 	go func() { // grpc
 		s.opt.service.Run()
@@ -57,15 +71,15 @@ func Run(opts ...Option) (*server, error) {
 
 	if s.opt.router != nil {
 		s.wg.Add(1)
-		listener := s.opt.service.Server().GetListener()
 		go func() { // http
-			http.Handle("/", s.opt.router)
-			http.Serve(listener, nil)
+			// http.Handle("/", s.opt.router)
+			// http.Serve(listener, nil)
 			// or
-			// err := s.opt.router.RunListener(listener)
-			// if err != nil {
-			// 	debugPrintError(err)
-			// }
+			httpl := s.mux.Match(cmux.HTTP1Fast())
+			err := s.opt.router.RunListener(httpl)
+			if err != nil {
+				debugPrintError(err)
+			}
 			s.wg.Done()
 		}()
 	}
@@ -116,11 +130,17 @@ type server struct {
 	opt     options
 	wg      sync.WaitGroup
 	isStart bool
+	mux     cmux.CMux
 }
 
 // Wait 等待结束
 func (s *server) Wait() {
-	time.Sleep(1 * time.Second)
+	if s.mux != nil {
+		if err := s.mux.Serve(); !strings.Contains(err.Error(), "use of closed network connection") {
+			panic(err)
+		}
+	}
+
 	s.wg.Wait()
 }
 
