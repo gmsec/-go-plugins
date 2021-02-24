@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/xxjwxc/public/dev"
@@ -59,8 +58,7 @@ func Run(opts ...Option) (*server, error) {
 	}
 	s.mux = cmux.New(lis)
 
-	grpcl := s.mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
-
+	grpcl := s.mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 	s.opt.service.Server().SetListener(grpcl)
 
 	s.wg.Add(1)
@@ -87,6 +85,46 @@ func Run(opts ...Option) (*server, error) {
 	s.isStart = true
 	return &s, nil
 }
+
+// Run run
+// func Run(opts ...Option) (*server, error) {
+// 	var s server
+// 	for _, f := range opts {
+// 		f(&s.opt)
+// 	}
+
+// 	if s.opt.service == nil {
+// 		return nil, fmt.Errorf("service is nil")
+// 	}
+
+// 	if len(s.opt.addr) > 0 {
+// 		s.opt.service.Server().SetAddress(s.opt.addr)
+// 	}
+
+// 	s.wg.Add(1)
+// 	go func() { // grpc
+// 		s.opt.service.Run()
+// 		s.wg.Done()
+// 	}()
+
+// 	if s.opt.router != nil {
+// 		s.wg.Add(1)
+// 		listener := s.opt.service.Server().GetListener()
+// 		go func() { // http
+// 			http.Handle("/", s.opt.router)
+// 			http.Serve(listener, nil)
+// 			// or
+// 			// err := s.opt.router.RunListener(listener)
+// 			// if err != nil {
+// 			// 	debugPrintError(err)
+// 			// }
+// 			s.wg.Done()
+// 		}()
+// 	}
+
+// 	s.isStart = true
+// 	return &s, nil
+// }
 
 // RunHTTP 只启动http
 func RunHTTP(opts ...Option) (*server, error) {
@@ -136,8 +174,8 @@ type server struct {
 // Wait 等待结束
 func (s *server) Wait() {
 	if s.mux != nil {
-		if err := s.mux.Serve(); !strings.Contains(err.Error(), "use of closed network connection") {
-			panic(err)
+		if err := s.mux.Serve(); err != nil {
+			mylog.Error(err)
 		}
 	}
 
