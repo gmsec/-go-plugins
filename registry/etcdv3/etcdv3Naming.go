@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	etcdNaming "github.com/coreos/etcd/clientv3/naming"
 	"github.com/gmsec/micro/registry"
 	"github.com/google/uuid"
+	"github.com/xxjwxc/public/tools"
 	"google.golang.org/grpc/naming"
 )
 
@@ -93,6 +95,13 @@ func (r *Etcdv3NamingRegister) Deregister() error {
 func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) error {
 	r.Lock()
 	defer r.Unlock()
+	// ip fix
+	if strings.HasPrefix(address, "[::]") {
+		address = tools.GetLocalIP() + address[4:]
+	} else if strings.HasPrefix(address, ":") {
+		address = tools.GetLocalIP() + address
+	}
+	// ------end
 
 	r.opts.Addrs = []string{address}
 	_, pt, err := net.SplitHostPort(address)
