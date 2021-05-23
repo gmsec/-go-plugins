@@ -22,12 +22,14 @@ import (
 type Etcdv3NamingRegister struct {
 	opts registry.Options
 	sync.Mutex
-	node *clientv3.Client
+	node    *clientv3.Client
+	address string
+	port    int
 
 	// watch mabey
-	cancel context.CancelFunc
-	ctx    context.Context
-	isInit bool
+	// cancel context.CancelFunc
+	// ctx    context.Context
+	// isInit bool
 	// listener
 	// listener chan *mdns.ServiceEntry
 }
@@ -55,9 +57,9 @@ func newDNSNamingRegistry(etcdCli *clientv3.Client, opts ...registry.Option) reg
 	}
 
 	return &Etcdv3NamingRegister{
-		opts:   options,
-		node:   etcdCli,
-		isInit: true,
+		opts: options,
+		node: etcdCli,
+		// isInit: true,
 	}
 }
 
@@ -84,6 +86,12 @@ func (r *Etcdv3NamingRegister) Deregister() error {
 	r.Lock()
 	defer r.Unlock()
 	if r.node != nil {
+		gr := &etcdNaming.GRPCResolver{Client: r.node}
+		gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
+			Op:       naming.Delete,
+			Addr:     r.address,
+			Metadata: r.port,
+		})
 		r.node.Close()
 		r.node = nil
 	}
@@ -109,9 +117,9 @@ func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) er
 		return err
 	}
 	port, _ := strconv.Atoi(pt)
+	r.address, r.port = address, port
 
 	gr := &etcdNaming.GRPCResolver{Client: r.node}
-
 	//r.Resolve(fmt.Sprintf("127.0.0.1:%s", *port))
 	err = gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
 		Op:       naming.Add,
@@ -133,4 +141,4 @@ func (r *Etcdv3NamingRegister) Resolve(target string) (naming.Watcher, error) {
 }
 
 // Close close watcher
-func (r *Etcdv3NamingRegister) Close() { r.node.Close() }
+func (r *Etcdv3NamingRegister) Close() { r.Deregister() }
