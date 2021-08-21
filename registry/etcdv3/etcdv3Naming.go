@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	etcdNaming "github.com/coreos/etcd/clientv3/naming"
 	"github.com/gmsec/micro/registry"
 	"github.com/google/uuid"
 	"github.com/xxjwxc/public/tools"
@@ -24,7 +23,7 @@ type Etcdv3NamingRegister struct {
 	sync.Mutex
 	node    *clientv3.Client
 	address string
-	port    int
+	// port    int
 
 	// watch mabey
 	// cancel context.CancelFunc
@@ -47,10 +46,11 @@ func NewEtcdv3NamingRegistry(conf clientv3.Config, opts ...registry.Option) regi
 
 func newDNSNamingRegistry(etcdCli *clientv3.Client, opts ...registry.Option) registry.RegNaming {
 	options := registry.Options{
-		Context:     context.Background(),
-		Timeout:     time.Millisecond * 100,
-		NodeID:      uuid.New().String(),
-		ServiceName: "gmsec.service",
+		Context:          context.Background(),
+		Timeout:          time.Millisecond * 100,
+		NodeID:           uuid.New().String(),
+		KeepHeartTimeout: time.Second * 15,
+		ServiceName:      "gmsec.service",
 	}
 	for _, o := range opts {
 		o(&options)
@@ -65,6 +65,19 @@ func newDNSNamingRegistry(etcdCli *clientv3.Client, opts ...registry.Option) reg
 
 func (r *Etcdv3NamingRegister) String() string {
 	return r.opts.ServiceName
+}
+
+func (r *Etcdv3NamingRegister) GetPort() int {
+	if len(r.opts.Addrs) == 0 {
+		return 0
+	}
+
+	_, pt, err := net.SplitHostPort(r.opts.Addrs[0])
+	if err != nil {
+		return 0
+	}
+	port, _ := strconv.Atoi(pt)
+	return port
 }
 
 // Init init option
@@ -86,11 +99,11 @@ func (r *Etcdv3NamingRegister) Deregister() error {
 	r.Lock()
 	defer r.Unlock()
 	if r.node != nil {
-		gr := &etcdNaming.GRPCResolver{Client: r.node}
+		gr := &GRPCResolver{Client: r.node, HeartTimeout: r.opts.KeepHeartTimeout * 10}
 		gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
-			Op:       naming.Delete,
-			Addr:     r.address,
-			Metadata: r.port,
+			Op:   naming.Delete,
+			Addr: r.address,
+			// Metadata: r.port,
 		})
 		r.node.Close()
 		r.node = nil
@@ -111,21 +124,25 @@ func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) er
 	}
 	// ------end
 
-	r.opts.Addrs = []string{address}
-	_, pt, err := net.SplitHostPort(address)
-	if err != nil {
-		return err
-	}
-	port, _ := strconv.Atoi(pt)
-	r.address, r.port = address, port
-
-	gr := &etcdNaming.GRPCResolver{Client: r.node}
+	gr := &GRPCResolver{Client: r.node}
 	//r.Resolve(fmt.Sprintf("127.0.0.1:%s", *port))
-	err = gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
+	up := naming.Update{
 		Op:       naming.Add,
 		Addr:     address,
-		Metadata: port,
-	})
+		Metadata: time.Now().Unix(),
+	}
+	err := gr.Update(context.TODO(), r.opts.ServiceName, up)
+
+	// heart 心跳
+	go func() {
+		for {
+			ticker := time.NewTicker(r.opts.KeepHeartTimeout)
+			<-ticker.C
+			up.Metadata = time.Now().Unix()
+			gr.Update(context.TODO(), r.opts.ServiceName, up) // 发送心跳
+		}
+	}()
+	// ----------------------end
 
 	return err
 }
@@ -135,7 +152,7 @@ func (r *Etcdv3NamingRegister) Resolve(target string) (naming.Watcher, error) {
 	r.Lock()
 	defer r.Unlock()
 
-	t := &etcdNaming.GRPCResolver{Client: r.node}
+	t := &GRPCResolver{Client: r.node, HeartTimeout: r.opts.KeepHeartTimeout * 10}
 
 	return t.Resolve(target)
 }
