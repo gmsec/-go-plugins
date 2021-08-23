@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"github.com/gmsec/micro/naming"
 	"github.com/gmsec/micro/registry"
 	"github.com/google/uuid"
 	"github.com/xxjwxc/public/tools"
-	"google.golang.org/grpc/naming"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 // Etcdv3NamingRegister dns default register

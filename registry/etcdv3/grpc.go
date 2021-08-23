@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"time"
 
-	etcd "github.com/coreos/etcd/clientv3"
+	"github.com/gmsec/micro/naming"
+	etcd "go.etcd.io/etcd/client/v3"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/naming"
 	"google.golang.org/grpc/status"
 )
 
@@ -108,7 +108,6 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 		}
 
 		if err == nil {
-
 			me, b := jupdate.Metadata.(float64)
 			if b && me > offset {
 				updates = append(updates, &jupdate)
