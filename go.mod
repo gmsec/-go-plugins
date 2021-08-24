@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/gin-gonic/gin v1.7.2
-	github.com/gmsec/micro v0.0.0-20210824071646-32ef74496c59
+	github.com/gmsec/micro v0.0.0-20210824093724-29d61bf5ebe3
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.4.2 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
