@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/gin-gonic/gin v1.7.2
-	github.com/gmsec/micro v0.0.0-20210823071050-448f4a058e29
+	github.com/gmsec/micro v0.0.0-20210824071646-32ef74496c59
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.4.2 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
@@ -16,7 +16,7 @@ require (
 	go.uber.org/zap v1.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
-	golang.org/x/sys v0.0.0-20210820121016-41cdb8703e55 // indirect
+	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20210821163610-241b8fcbd6c8 // indirect
 	google.golang.org/grpc v1.40.0
