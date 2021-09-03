@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/gmsec/micro/naming"
+	"github.com/xxjwxc/public/mylog"
+	"github.com/xxjwxc/public/tools"
 	etcd "go.etcd.io/etcd/client/v3"
 
 	"google.golang.org/grpc/codes"
@@ -118,6 +120,7 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 	}
 
 	if len(deleteUpdate) > 0 {
+		mylog.Debugf("delete(%v):%v", gw.serviceName, tools.JSONDecode(deleteUpdate))
 		gr := &GRPCResolver{Client: gw.c, HeartTimeout: gw.HeartTimeout}
 		for _, v := range deleteUpdate {
 			gr.Update(context.TODO(), gw.serviceName, naming.Update{
@@ -161,6 +164,7 @@ func (gw *gRPCWatcher) firstNext() ([]*naming.Update, error) {
 	if len(deleteUpdate) > 0 {
 		gr := &GRPCResolver{Client: gw.c, HeartTimeout: gw.HeartTimeout}
 		for _, v := range deleteUpdate {
+			mylog.Debugf("delete(%v):%v", gw.serviceName, tools.JSONDecode(deleteUpdate))
 			gr.Update(context.TODO(), gw.serviceName, naming.Update{
 				Op:   naming.Delete,
 				Addr: v.Addr,
@@ -174,4 +178,6 @@ func (gw *gRPCWatcher) firstNext() ([]*naming.Update, error) {
 	return updates, nil
 }
 
-func (gw *gRPCWatcher) Close() { gw.cancel() }
+func (gw *gRPCWatcher) Close() {
+	gw.cancel()
+}

@@ -49,7 +49,7 @@ func newDNSNamingRegistry(etcdCli *clientv3.Client, opts ...registry.Option) reg
 		Context:          context.Background(),
 		Timeout:          time.Millisecond * 100,
 		NodeID:           uuid.New().String(),
-		KeepHeartTimeout: time.Second * 15,
+		KeepHeartTimeout: time.Second * 30,
 		ServiceName:      "gmsec.service",
 	}
 	for _, o := range opts {
@@ -122,13 +122,14 @@ func (r *Etcdv3NamingRegister) Register(address string, Metadata interface{}) er
 	} else if strings.HasPrefix(address, ":") {
 		address = tools.GetLocalIP() + address
 	}
+	r.address = address
 	// ------end
 
 	gr := &GRPCResolver{Client: r.node}
 	//r.Resolve(fmt.Sprintf("127.0.0.1:%s", *port))
 	up := naming.Update{
 		Op:       naming.Add,
-		Addr:     address,
+		Addr:     r.address,
 		Metadata: time.Now().Unix(),
 	}
 	err := gr.Update(context.TODO(), r.opts.ServiceName, up)
