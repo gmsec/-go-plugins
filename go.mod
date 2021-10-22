@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.4.2 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
+	github.com/nacos-group/nacos-sdk-go v1.0.9
 	github.com/soheilhy/cmux v0.1.4
 	github.com/xxjwxc/public v0.0.0-20210812080902-893e9ff8ba5f
 	go.etcd.io/etcd/client/v3 v3.5.0
