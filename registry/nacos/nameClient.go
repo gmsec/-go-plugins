@@ -2,9 +2,7 @@ package nacos
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"time"
@@ -18,12 +16,15 @@ import (
 	"github.com/xxjwxc/public/tools"
 )
 
+var _map map[string]*chan []*naming.Update
+
+func init() {
+	_map = make(map[string]*chan []*naming.Update)
+}
+
 type namingClient struct {
-	client naming_client.INamingClient
-	//wch      etcd.WatchChan
-	wch         chan string
-	revision    int64
-	closeed     bool
+	client      naming_client.INamingClient
+	isFirst     bool
 	serviceName string
 }
 
@@ -102,12 +103,12 @@ func (nc *namingClient) Get(ctx context.Context, serviceName string) ([]*naming.
 	out := make([]*naming.Update, 0, len(instances))
 	for _, v := range instances {
 		// string到int64
-		i64, _ := strconv.ParseInt(v.Metadata["heart"], 10, 64)
+		f64, _ := strconv.ParseFloat(v.Metadata["heart"], 64)
 
 		out = append(out, &naming.Update{
 			Op:       naming.Add,
 			Addr:     fmt.Sprintf("%v:%v", v.Ip, v.Port),
-			Metadata: i64,
+			Metadata: f64,
 		})
 	}
 
@@ -116,81 +117,80 @@ func (nc *namingClient) Get(ctx context.Context, serviceName string) ([]*naming.
 
 // Watchering Watcher is init
 func (nc *namingClient) Watchering() bool {
-	return nc.wch != nil
+	return nc.isFirst
 }
 
 // Watch start watch // 做成全局监听
 func (nc *namingClient) Watch(ctx context.Context, serviceName string) error {
-	nc.wch = make(chan string)
-	nc.closeed = false
+	nc.isFirst = true
+	if _, ok := _map[nc.serviceName]; ok { // 已经有监听
+		return nil
+	}
+	wch := make(chan []*naming.Update)
+	_map[nc.serviceName] = &wch
+
 	nc.serviceName = serviceName
 	go func() {
-		// 注意:我们可以在相同的key添加多个SubscribeCallback.
-		err := nc.client.Subscribe(&vo.SubscribeParam{
-			ServiceName: serviceName,
-			// GroupName:   "group-a",             // 默认值DEFAULT_GROUP
-			// Clusters:    []string{"cluster-a"}, // 默认值DEFAULT
-			SubscribeCallback: func(services []model.SubscribeService, err error) {
-				log.Printf("\n\n callback return services:%v \n\n", tools.JSONDecode(services))
-				var updates []*naming.Update
-				for _, v := range services {
-					i64, _ := strconv.ParseInt(v.Metadata["heart"], 10, 64)
-					op := naming.Add
-					if v.Metadata["op"] == "1" || !v.Enable || !v.Valid {
-						op = naming.Delete
+		for {
+			// 注意:我们可以在相同的key添加多个SubscribeCallback.
+			err := nc.client.Subscribe(&vo.SubscribeParam{
+				ServiceName: serviceName,
+				// GroupName:   "group-a",             // 默认值DEFAULT_GROUP
+				// Clusters:    []string{"cluster-a"}, // 默认值DEFAULT
+				SubscribeCallback: func(services []model.SubscribeService, err error) {
+					mylog.Infof("services:%v", tools.JSONDecode(services))
+					var updates []*naming.Update
+					for _, v := range services {
+						f64, _ := strconv.ParseFloat(v.Metadata["heart"], 64)
+						op := naming.Add
+						if v.Metadata["op"] == "1" || !v.Enable || !v.Valid {
+							op = naming.Delete
+						}
+
+						updates = append(updates, &naming.Update{
+							Op:       op,
+							Addr:     fmt.Sprintf("%v:%v", v.Ip, v.Port),
+							Metadata: f64,
+						})
 					}
+					if len(updates) > 0 {
+						wch <- updates
+					}
+				},
+			})
 
-					updates = append(updates, &naming.Update{
-						Op:       op,
-						Addr:     fmt.Sprintf("%v:%v", v.Ip, v.Port),
-						Metadata: i64,
-					})
-				}
-				if len(updates) > 0 && !nc.closeed {
-					nc.wch <- tools.JSONDecode(updates)
-				}
-			},
-		})
-
-		if err != nil {
-			mylog.Error(err)
+			if err != nil {
+				mylog.Error(err)
+			} else {
+				break
+			}
 		}
-		// opts := []etcd.OpOption{etcd.WithRev(nc.revision + 1), etcd.WithPrefix(), etcd.WithPrevKV()}
-		// nc.wch = nc.client.Watch(ctx, key, opts...)
 	}()
 	return nil
 }
 
 // WatcherNext watching next
 func (nc *namingClient) WatcherNext() ([]*naming.Update, error) {
-	jsonstr, closeed := <-nc.wch
-	if closeed {
-		nc.closeed = true
-	}
 
-	var updates []*naming.Update
-	err := json.Unmarshal([]byte(jsonstr), &updates)
-	if err != nil {
-		return nil, err
-	}
+	updates := <-*_map[nc.serviceName]
 
 	return updates, nil
 }
 
 // Close close
 func (nc *namingClient) Close() error {
-	nc.closeed = true
-	if nc.wch != nil {
-		close(nc.wch)
-		return nc.client.Unsubscribe(&vo.SubscribeParam{
-			ServiceName: nc.serviceName,
-			// GroupName:   "group-a",             // 默认值DEFAULT_GROUP
-			// Clusters:    []string{"cluster-a"}, // 默认值DEFAULT
-			SubscribeCallback: func(services []model.SubscribeService, err error) {
-				log.Printf("\n\n callback return services:%s \n\n", tools.JSONDecode(services))
-			},
-		})
-	}
+	// nc.closeed = true
+	// if nc.wch != nil {
+	// 	close(nc.wch)
+	// 	return nc.client.Unsubscribe(&vo.SubscribeParam{
+	// 		ServiceName: nc.serviceName,
+	// 		// GroupName:   "group-a",             // 默认值DEFAULT_GROUP
+	// 		// Clusters:    []string{"cluster-a"}, // 默认值DEFAULT
+	// 		SubscribeCallback: func(services []model.SubscribeService, err error) {
+	// 			log.Printf("\n\n callback return services:%s \n\n", tools.JSONDecode(services))
+	// 		},
+	// 	})
+	// }
 
 	// return nc.client.Close()
 	return nil

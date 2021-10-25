@@ -64,7 +64,7 @@ func (nc *namingClient) Watchering() bool {
 
 // Watch start watch
 func (nc *namingClient) Watch(ctx context.Context, key string) error {
-	opts := []etcd.OpOption{etcd.WithRev(nc.revision + 1), etcd.WithPrefix(), etcd.WithPrevKV()}
+	opts := []etcd.OpOption{etcd.WithPrefix(), etcd.WithPrevKV()}
 	nc.wch = nc.client.Watch(ctx, key, opts...)
 	return nil
 }
@@ -107,5 +107,6 @@ func (nc *namingClient) New(serviceName string) namingregister.NamingClient {
 
 // Close close
 func (nc *namingClient) Close() error {
-	return nc.client.Close()
+	// return nc.client.Close()
+	return nil
 }
