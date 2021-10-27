@@ -3,12 +3,13 @@ module github.com/gmsec/goplugins
 go 1.14
 
 require (
+	github.com/buger/jsonparser v1.0.0 // indirect
 	github.com/gin-gonic/gin v1.7.2
 	github.com/gmsec/micro v0.0.0-20210824093724-29d61bf5ebe3
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.4.2 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
-	github.com/nacos-group/nacos-sdk-go v1.0.9
+	github.com/nacos-group/nacos-sdk-go v1.0.10-0.20211025015044-554da083d462
 	github.com/soheilhy/cmux v0.1.4
 	github.com/xxjwxc/public v0.0.0-20210812080902-893e9ff8ba5f
 	go.etcd.io/etcd/client/v3 v3.5.0
