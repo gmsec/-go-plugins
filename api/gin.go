@@ -4,9 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"unsafe"
 
 	"github.com/xxjwxc/public/mylog"
+	"github.com/xxjwxc/public/tools"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,11 +25,24 @@ func (c *Context) WriteJSON(obj interface{}) {
 	c.GetGinCtx().JSON(200, obj)
 }
 
+// WriteHeadToCtx 设置头数据到grpc headre里面
+func (c *Context) WriteHeadToCtx() {
+	js := tools.JSONDecode(c.GetGinCtx().Request.Header)
+	headerData := metadata.Pairs("_HttpHeader", js)
+	c.Context = metadata.NewOutgoingContext(c.Context, headerData)
+}
+
+// AddHeadToCtx 添加一层数据到ctx里面
+func (c *Context) AddHeadToCtx(kv ...string) { // 后续也可以往后面添加数据
+	c.Context = metadata.AppendToOutgoingContext(c.Context, kv...)
+}
+
 // GetGinCtx 获取 gin.Context
 func (c *Context) GetGinCtx() *gin.Context {
 	req := c.GetValue(ginHTTPReq{})
 	if req != nil {
 		if r, ok := req.(*gin.Context); ok {
+			c.WriteHeadToCtx() // 默认推送header 到ctx里面
 			return r
 		}
 	}
@@ -42,39 +56,16 @@ func (c *Context) GetGinCtx() *gin.Context {
 	return r
 }
 
-type iface struct{ itab, data uintptr }
-type valueCtx struct {
-	context.Context
-	key, val interface{}
-}
-
 func GetKeyValues(ctx context.Context) map[string][]string {
 	m := make(map[string][]string)
-	getKeyValue(ctx, m)
-	return m
-}
-func getKeyValue(ctx context.Context, m map[string][]string) {
-	ictx := *(*iface)(unsafe.Pointer(&ctx))
-	if ictx.data == 0 {
-		return
-	}
-	valCtx := (*valueCtx)(unsafe.Pointer(ictx.data))
-	if valCtx != nil && valCtx.key != nil && valCtx.val != nil {
-		key, ok := valCtx.key.(string)
-		if ok {
-			val, ok := valCtx.val.(string)
-			if ok {
-				m[key] = append(m[key], val)
-			} else {
-				vals, ok := valCtx.val.([]string)
-				if ok {
-					m[key] = append(m[key], vals...)
-				}
-			}
+	// 调用服务端方法的时候可以在后面传参数
+	md, _ := metadata.FromIncomingContext(ctx)
+	if v, ok := md["_HttpHeader"]; ok {
+		if len(v) > 0 {
+			tools.JSONEncode(v[0], m)
 		}
-
 	}
-	getKeyValue(valCtx.Context, m)
+	return m
 }
 
 // NewCtx Create a new custom context
