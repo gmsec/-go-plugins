@@ -42,7 +42,6 @@ func (c *Context) GetGinCtx() *gin.Context {
 	req := c.GetValue(ginHTTPReq{})
 	if req != nil {
 		if r, ok := req.(*gin.Context); ok {
-			c.WriteHeadToCtx(r) // 默认推送header 到ctx里面
 			return r
 		}
 	}
@@ -53,6 +52,7 @@ func (c *Context) GetGinCtx() *gin.Context {
 		Method: "POST",
 		Header: GetKeyValues(c),
 	}
+	c.SetValue(ginHTTPReq{}, r)
 	return r
 }
 
