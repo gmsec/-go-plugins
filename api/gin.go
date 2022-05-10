@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
+	"unsafe"
 
 	"github.com/xxjwxc/public/mylog"
 
@@ -31,9 +33,48 @@ func (c *Context) GetGinCtx() *gin.Context {
 		}
 	}
 
-	mylog.ErrorString("using default gin.context")
+	mylog.Info("using default gin.context")
 	r, _ := gin.CreateTestContext(httptest.NewRecorder())
+	r.Request = &http.Request{
+		Method: "POST",
+		Header: GetKeyValues(c),
+	}
 	return r
+}
+
+type iface struct{ itab, data uintptr }
+type valueCtx struct {
+	context.Context
+	key, val interface{}
+}
+
+func GetKeyValues(ctx context.Context) map[string][]string {
+	m := make(map[string][]string)
+	getKeyValue(ctx, m)
+	return m
+}
+func getKeyValue(ctx context.Context, m map[string][]string) {
+	ictx := *(*iface)(unsafe.Pointer(&ctx))
+	if ictx.data == 0 {
+		return
+	}
+	valCtx := (*valueCtx)(unsafe.Pointer(ictx.data))
+	if valCtx != nil && valCtx.key != nil && valCtx.val != nil {
+		key, ok := valCtx.key.(string)
+		if ok {
+			val, ok := valCtx.val.(string)
+			if ok {
+				m[key] = append(m[key], val)
+			} else {
+				vals, ok := valCtx.val.([]string)
+				if ok {
+					m[key] = append(m[key], vals...)
+				}
+			}
+		}
+
+	}
+	getKeyValue(valCtx.Context, m)
 }
 
 // NewCtx Create a new custom context
