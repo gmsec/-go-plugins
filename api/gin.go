@@ -26,9 +26,9 @@ func (c *Context) WriteJSON(obj interface{}) {
 }
 
 // WriteHeadToCtx 设置头数据到grpc headre里面
-func (c *Context) WriteHeadToCtx() {
-	js := tools.JSONDecode(c.GetGinCtx().Request.Header)
-	headerData := metadata.Pairs("_HttpHeader", js)
+func (c *Context) WriteHeadToCtx(g *gin.Context) {
+	js := tools.JSONDecode(g.Request.Header)
+	headerData := metadata.Pairs("gmsec-httpheader", js)
 	c.Context = metadata.NewOutgoingContext(c.Context, headerData)
 }
 
@@ -42,7 +42,7 @@ func (c *Context) GetGinCtx() *gin.Context {
 	req := c.GetValue(ginHTTPReq{})
 	if req != nil {
 		if r, ok := req.(*gin.Context); ok {
-			c.WriteHeadToCtx() // 默认推送header 到ctx里面
+			c.WriteHeadToCtx(r) // 默认推送header 到ctx里面
 			return r
 		}
 	}
@@ -60,9 +60,9 @@ func GetKeyValues(ctx context.Context) map[string][]string {
 	m := make(map[string][]string)
 	// 调用服务端方法的时候可以在后面传参数
 	md, _ := metadata.FromIncomingContext(ctx)
-	if v, ok := md["_HttpHeader"]; ok {
+	if v, ok := md["gmsec-httpheader"]; ok {
 		if len(v) > 0 {
-			tools.JSONEncode(v[0], m)
+			tools.JSONEncode(v[0], &m)
 		}
 	}
 	return m
