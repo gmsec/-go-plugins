@@ -20,7 +20,7 @@ func (c *Context) GetVersion() string { // 获取版本号
 	return c.GetGinCtx().Param("version")
 }
 
-//WriteJSON 写入json对象
+// WriteJSON 写入json对象
 func (c *Context) WriteJSON(obj interface{}) {
 	c.GetGinCtx().JSON(200, obj)
 }
