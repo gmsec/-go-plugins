@@ -16,7 +16,7 @@ require (
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.18 // indirect
 	github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394 // indirect
-	github.com/buger/jsonparser v1.0.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
