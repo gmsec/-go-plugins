@@ -100,11 +100,13 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 		mylog.Debugf("delete(%v):%v", gw.serviceName, tools.JSONDecode(deleteUpdate))
 		gr := &GRPCResolver{Client: gw.c, HeartTimeout: gw.HeartTimeout}
 		for _, v := range deleteUpdate {
-			gr.Update(context.TODO(), gw.serviceName, naming.Update{
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			gr.Update(ctx, gw.serviceName, naming.Update{
 				Op:   naming.Delete,
 				Addr: v.Addr,
 				// Metadata: r.port,
 			})
+			cancel()
 		}
 	}
 
@@ -135,11 +137,13 @@ func (gw *gRPCWatcher) firstNext() ([]*naming.Update, error) {
 		gr := &GRPCResolver{Client: gw.c, HeartTimeout: gw.HeartTimeout}
 		for _, v := range deleteUpdate {
 			mylog.Debugf("delete(%v):%v", gw.serviceName, tools.JSONDecode(deleteUpdate))
-			gr.Update(context.TODO(), gw.serviceName, naming.Update{
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			gr.Update(ctx, gw.serviceName, naming.Update{
 				Op:   naming.Delete,
 				Addr: v.Addr,
 				// Metadata: r.port,
 			})
+			cancel()
 		}
 	}
 

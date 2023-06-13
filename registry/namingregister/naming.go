@@ -86,11 +86,13 @@ func (r *NamingRegister) Deregister() error {
 	defer r.Unlock()
 	if r.node != nil {
 		gr := &GRPCResolver{Client: r.node, HeartTimeout: r.opts.KeepHeartTimeout * 10}
-		gr.Update(context.TODO(), r.opts.ServiceName, naming.Update{
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		gr.Update(ctx, r.opts.ServiceName, naming.Update{
 			Op:   naming.Delete,
 			Addr: r.address,
 			// Metadata: r.port,
 		})
+		cancel()
 		r.node.Close()
 		r.node = nil
 	}
@@ -98,7 +100,7 @@ func (r *NamingRegister) Deregister() error {
 	return nil
 }
 
-//Register register & add new node
+// Register register & add new node
 func (r *NamingRegister) Register(address string, Metadata interface{}) error {
 	r.Lock()
 	defer r.Unlock()
@@ -118,15 +120,18 @@ func (r *NamingRegister) Register(address string, Metadata interface{}) error {
 		Addr:     r.address,
 		Metadata: time.Now().Unix(),
 	}
-	err := gr.Update(context.TODO(), r.opts.ServiceName, up)
-
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	err := gr.Update(ctx, r.opts.ServiceName, up)
+	cancel()
 	// heart 心跳
 	go func() {
 		for {
 			ticker := time.NewTicker(r.opts.KeepHeartTimeout)
 			<-ticker.C
 			up.Metadata = time.Now().Unix()
-			gr.Update(context.TODO(), r.opts.ServiceName, up) // 发送心跳
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			gr.Update(ctx, r.opts.ServiceName, up) // 发送心跳
+			cancel()
 		}
 	}()
 	// ----------------------end
