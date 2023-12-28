@@ -37,7 +37,7 @@ func (nc *namingClient) Delete(ctx context.Context, key string, val naming.Updat
 
 // Get retrieves keys.
 func (nc *namingClient) Get(ctx context.Context, key string) ([]*naming.Update, error) {
-	resp, err := nc.client.Get(ctx, key, etcd.WithPrefix(), etcd.WithSerializable())
+	resp, err := nc.client.Get(ctx, key+"//", etcd.WithPrefix(), etcd.WithSerializable())
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func (nc *namingClient) Watchering() bool {
 
 // Watch start watch
 func (nc *namingClient) Watch(ctx context.Context, key string) error {
-	opts := []etcd.OpOption{etcd.WithPrefix(), etcd.WithPrevKV()}
-	nc.wch = nc.client.Watch(ctx, key, opts...)
+	opts := []etcd.OpOption{etcd.WithPrefix(), etcd.WithPrevKV(), etcd.WithSerializable()}
+	nc.wch = nc.client.Watch(ctx, key+"//", opts...)
 	return nil
 }
 
