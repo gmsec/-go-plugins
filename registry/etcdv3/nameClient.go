@@ -64,7 +64,7 @@ func (nc *namingClient) Watchering() bool {
 
 // Watch start watch
 func (nc *namingClient) Watch(ctx context.Context, key string) error {
-	opts := []etcd.OpOption{etcd.WithPrefix(), etcd.WithPrevKV(), etcd.WithSerializable()}
+	opts := []etcd.OpOption{etcd.WithPrefix(), etcd.WithPrevKV()}
 	nc.wch = nc.client.Watch(ctx, key+"//", opts...)
 	return nil
 }
